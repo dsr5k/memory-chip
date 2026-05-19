@@ -1,7 +1,7 @@
 import os
-from hashlib import sha256
 import logging
 from pathlib import Path
+from uuid import uuid4
 
 import boto3
 from botocore.client import Config
@@ -50,8 +50,7 @@ class AudioStorage:
                 logger.exception('Failed to write chunk to S3-compatible storage, falling back to local storage')
 
         storage_root = Path(settings.local_storage_path).resolve()
-        extension = Path(safe_key).suffix or '.webm'
-        target_name = f'{sha256(safe_key.encode("utf-8")).hexdigest()}{extension}'
+        target_name = f'{uuid4().hex}.webm'
         target = storage_root / target_name
 
         target.parent.mkdir(parents=True, exist_ok=True)
