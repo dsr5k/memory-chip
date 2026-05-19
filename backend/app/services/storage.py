@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_object_key(key: str) -> str:
     normalized = key.replace('\\', '/')
+    if normalized.startswith('/'):
+        raise ValueError('Invalid object key')
     parts = [segment for segment in normalized.split('/') if segment not in ('', '.')]
     if not parts or any(segment == '..' for segment in parts):
         raise ValueError('Invalid object key')
