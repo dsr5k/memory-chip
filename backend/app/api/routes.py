@@ -76,7 +76,10 @@ async def ingest_chunk(
 
     payload = await audio.read()
     key = f'{session_id}/{chunk_index}-{int(datetime.now(timezone.utc).timestamp())}.webm'
-    storage_url = storage.save(key=key, body=payload, content_type=audio.content_type or 'audio/webm')
+    try:
+        storage_url = storage.save(key=key, body=payload, content_type=audio.content_type or 'audio/webm')
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     chunk = AudioChunk(
         session_id=session_id,

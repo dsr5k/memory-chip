@@ -10,6 +10,14 @@ from app.core.config import get_settings
 settings = get_settings()
 
 
+def _sanitize_object_key(key: str) -> str:
+    normalized = key.replace('\\', '/')
+    parts = [segment for segment in normalized.split('/') if segment not in ('', '.')]
+    if not parts or any(segment == '..' for segment in parts):
+        raise ValueError('Invalid object key')
+    return '/'.join(parts)
+
+
 class AudioStorage:
     def __init__(self):
         self._client = None
@@ -24,19 +32,25 @@ class AudioStorage:
             )
 
     def save(self, key: str, body: bytes, content_type: str) -> str:
+        safe_key = _sanitize_object_key(key)
+
         if self._client:
             try:
                 self._client.put_object(
                     Bucket=settings.s3_bucket_name,
-                    Key=key,
+                    Key=safe_key,
                     Body=body,
                     ContentType=content_type,
                 )
-                return f's3://{settings.s3_bucket_name}/{key}'
+                return f's3://{settings.s3_bucket_name}/{safe_key}'
             except (BotoCoreError, ClientError):
                 pass
 
-        target = Path(settings.local_storage_path) / key
+        storage_root = Path(settings.local_storage_path).resolve()
+        target = (storage_root / safe_key).resolve()
+        if not target.is_relative_to(storage_root):
+            raise ValueError('Invalid object key path')
+
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
         return f'file://{os.path.abspath(target)}'

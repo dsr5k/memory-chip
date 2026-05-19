@@ -1,4 +1,4 @@
-from app.models.entities import AudioChunk, Embedding, Flashcard, Note, Summary, Transcript
+from app.models.entities import AudioChunk
 
 
 def transcribe_chunk_stub(chunk: AudioChunk) -> tuple[str, float]:
