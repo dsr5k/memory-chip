@@ -1,4 +1,6 @@
 import os
+from hashlib import sha256
+import logging
 from pathlib import Path
 
 import boto3
@@ -8,6 +10,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from app.core.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def _sanitize_object_key(key: str) -> str:
@@ -44,12 +47,12 @@ class AudioStorage:
                 )
                 return f's3://{settings.s3_bucket_name}/{safe_key}'
             except (BotoCoreError, ClientError):
-                pass
+                logger.exception('Failed to write chunk to S3-compatible storage, falling back to local storage')
 
         storage_root = Path(settings.local_storage_path).resolve()
-        target = (storage_root / safe_key).resolve()
-        if not target.is_relative_to(storage_root):
-            raise ValueError('Invalid object key path')
+        extension = Path(safe_key).suffix or '.webm'
+        target_name = f'{sha256(safe_key.encode("utf-8")).hexdigest()}{extension}'
+        target = storage_root / target_name
 
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)

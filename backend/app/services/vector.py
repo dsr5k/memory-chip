@@ -1,5 +1,5 @@
 from qdrant_client import QdrantClient
-from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 from app.core.config import get_settings
 
@@ -26,7 +26,7 @@ class VectorSearch:
                 }
                 for point in points.points
             ]
-        except Exception:
+        except (UnexpectedResponse, ResponseHandlingException):
             return [
                 {
                     'id': 'stub',

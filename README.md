@@ -56,7 +56,7 @@ docker compose up -d
 ### 2) Backend
 
 ```bash
-cd /home/runner/work/memory-chip/memory-chip/backend
+cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -68,7 +68,7 @@ uvicorn app.main:app --reload --port 8000
 Run Celery worker in another terminal:
 
 ```bash
-cd /home/runner/work/memory-chip/memory-chip/backend
+cd backend
 source .venv/bin/activate
 celery -A worker.celery_app worker --loglevel=info
 ```
@@ -76,7 +76,7 @@ celery -A worker.celery_app worker --loglevel=info
 ### 3) Frontend
 
 ```bash
-cd /home/runner/work/memory-chip/memory-chip/frontend
+cd frontend
 cp .env.local.example .env.local
 npm install
 npm run dev
