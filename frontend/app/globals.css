@@ -1,0 +1,61 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: #111827;
+  color: #f3f4f6;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.card {
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+button.primary {
+  background: #22c55e;
+  color: #052e16;
+}
+
+button.warn {
+  background: #f59e0b;
+  color: #451a03;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+code {
+  background: #374151;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  background: #0f172a;
+  padding: 1rem;
+  border-radius: 8px;
+}
