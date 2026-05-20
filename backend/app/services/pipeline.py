@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from functools import lru_cache
 from os.path import basename
 from typing import Protocol
 from urllib.parse import urlparse
@@ -105,22 +104,26 @@ def _build_transcription_provider(settings: Settings) -> TranscriptionProvider:
     raise ValueError(f'Unsupported whisper provider: {settings.whisper_provider}')
 
 
-@lru_cache(maxsize=1)
-def _get_cached_transcription_provider() -> TranscriptionProvider:
-    return _build_transcription_provider(get_settings())
-
-
 def get_transcription_provider(settings: Settings | None = None) -> TranscriptionProvider:
-    if settings is not None:
-        return _build_transcription_provider(settings)
-    return _get_cached_transcription_provider()
+    return _build_transcription_provider(settings or get_settings())
+
+
+def _sanitize_transcription_error(error: Exception) -> str:
+    if isinstance(error, NotImplementedError):
+        return 'provider not implemented yet'
+    if isinstance(error, ValueError):
+        return 'provider is not configured correctly'
+    return 'transcription request failed'
 
 
 def build_transcription_error_result(chunk: AudioChunk, error: Exception) -> TranscriptionResult:
     provider = get_settings().whisper_provider
     logger.warning('Transcription failed for chunk %s using provider %s: %s', chunk.id, provider, error)
     return TranscriptionResult(
-        text=f'[transcription unavailable via {provider} for chunk {chunk.chunk_index}: {error}]',
+        text=(
+            f'[transcription unavailable via {provider} '
+            f'for chunk {chunk.chunk_index}: {_sanitize_transcription_error(error)}]'
+        ),
         confidence=0.0,
         provider=provider,
         is_error=True,

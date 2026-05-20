@@ -12,6 +12,8 @@ from app.services.pipeline import (
 )
 from app.tasks.celery_app import celery_app
 
+TRANSCRIPTION_ERROR_SCORE = 0.0
+
 
 @celery_app.task(name='app.tasks.pipeline.process_chunk')
 def process_chunk(chunk_id: str):
@@ -27,7 +29,7 @@ def process_chunk(chunk_id: str):
             transcription = build_transcription_error_result(chunk, exc)
 
         filtered_text = semantic_filter_stub(transcription.text)
-        score = 0.0 if transcription.is_error else relevance_score_stub(filtered_text)
+        score = TRANSCRIPTION_ERROR_SCORE if transcription.is_error else relevance_score_stub(filtered_text)
 
         transcript = Transcript(
             session_id=chunk.session_id,
