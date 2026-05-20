@@ -29,7 +29,10 @@ def process_chunk(chunk_id: str):
             transcription = build_transcription_error_result(chunk, exc)
 
         filtered_text = semantic_filter_stub(transcription.text)
-        score = TRANSCRIPTION_ERROR_SCORE if transcription.is_error else relevance_score_stub(filtered_text)
+        if transcription.is_error:
+            score = TRANSCRIPTION_ERROR_SCORE
+        else:
+            score = relevance_score_stub(filtered_text)
 
         transcript = Transcript(
             session_id=chunk.session_id,

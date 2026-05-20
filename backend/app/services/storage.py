@@ -82,7 +82,7 @@ class AudioStorage:
         if parsed.scheme == 'file':
             storage_root = Path(settings.local_storage_path).resolve()
             target = Path(unquote(parsed.path)).resolve()
-            if storage_root not in target.parents and target != storage_root:
+            if not (storage_root in target.parents or target == storage_root):
                 raise ValueError('Invalid local storage path')
             return target.read_bytes()
 
