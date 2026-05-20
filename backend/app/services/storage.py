@@ -82,8 +82,10 @@ class AudioStorage:
         if parsed.scheme == 'file':
             storage_root = Path(settings.local_storage_path).resolve()
             target = Path(unquote(parsed.path)).resolve()
-            if not (storage_root in target.parents or target == storage_root):
-                raise ValueError('Invalid local storage path')
+            try:
+                target.relative_to(storage_root)
+            except ValueError as exc:
+                raise ValueError('Invalid local storage path') from exc
             return target.read_bytes()
 
         raise ValueError('Unsupported storage URL')

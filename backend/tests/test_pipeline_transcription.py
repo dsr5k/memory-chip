@@ -44,7 +44,8 @@ class TranscriptionPipelineTests(TestCase):
         self.assertEqual(result.text, 'hello from whisper')
         self.assertIsNone(result.confidence)
         self.assertEqual(result.provider, 'openai_whisper')
-        self.assertEqual(client.audio.transcriptions.calls[0]['file'][2], 'audio/webm')
+        content_type = client.audio.transcriptions.calls[0]['file'][2]
+        self.assertEqual(content_type, 'audio/webm')
 
     def test_provider_factory_supports_openai_whisper(self):
         settings = Settings(

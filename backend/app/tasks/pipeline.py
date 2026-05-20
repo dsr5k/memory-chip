@@ -1,3 +1,4 @@
+from openai import OpenAIError
 from sqlalchemy import delete
 
 from app.db.session import SessionLocal
@@ -25,7 +26,7 @@ def process_chunk(chunk_id: str):
 
         try:
             transcription = transcribe_chunk(chunk)
-        except Exception as exc:
+        except (NotImplementedError, OSError, OpenAIError, TimeoutError, ValueError) as exc:
             transcription = build_transcription_error_result(chunk, exc)
 
         filtered_text = semantic_filter_stub(transcription.text)

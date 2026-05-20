@@ -31,7 +31,10 @@ class TranscriptionProvider(Protocol):
 def _normalize_audio_content_type(content_type: str) -> str:
     if not content_type:
         return 'audio/webm'
-    return content_type.split(';', maxsplit=1)[0].strip().lower() or 'audio/webm'
+    normalized = content_type.split(';', maxsplit=1)[0].strip().lower()
+    if not normalized:
+        return 'audio/webm'
+    return normalized
 
 
 def _guess_audio_filename(chunk: AudioChunk) -> str:
