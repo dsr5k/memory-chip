@@ -24,8 +24,9 @@ This backend is intentionally structured so ingestion can later accept BLE/hardw
 - Automatic mic capture from web phone browser (no manual upload flow)
 - Session lifecycle APIs: create / end / status
 - Chunk ingestion endpoint with object storage persistence
-- Async pipeline skeleton with stubbed:
-  - Whisper transcription
+- Async pipeline with configurable transcription provider support:
+  - OpenAI Whisper transcription
+  - Deepgram provider scaffold (TODO)
   - Semantic educational filtering
   - Relevance scoring
   - Notes and summaries generation
@@ -61,6 +62,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+# add your OPENAI_API_KEY before starting the worker
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
@@ -93,8 +95,20 @@ Open `http://localhost:3000` on your phone browser (same network) or desktop bro
 - Backend example vars: `backend/.env.example`
 - Frontend example vars: `frontend/.env.local.example`
 
+### Backend transcription settings
+
+- `WHISPER_PROVIDER=openai_whisper` enables the OpenAI Whisper integration.
+- `OPENAI_API_KEY` is required when `WHISPER_PROVIDER=openai_whisper`.
+- `OPENAI_WHISPER_MODEL` defaults to `whisper-1`.
+- `OPENAI_BASE_URL` is optional and can be used for proxies or testing.
+- `WHISPER_PROVIDER=deepgram` is reserved for a future integration and currently returns a TODO-style transcription error placeholder instead of crashing the worker.
+
+### Audio format note
+
+The web client records chunks as `audio/webm;codecs=opus`. The backend stores those chunks as `.webm` and sends them to OpenAI Whisper as `audio/webm` on a best-effort basis. This works for the current MVP path, but if a proxy or upstream transcription provider rejects WebM/Opus input, the worker will store an error placeholder transcript with low confidence instead of failing the entire pipeline.
+
 ## Phased delivery plan
 
 - **Phase 1 (this PR)**: Web-first MVP with phone mic capture, chunk streaming, async skeleton pipeline, and search wiring.
-- **Phase 2**: Replace stubs with production Whisper + LLM processing, add auth, and harden reliability/observability.
+- **Phase 2**: Add downstream production LLM processing, Deepgram support, auth, and harden reliability/observability.
 - **Phase 3**: Add hardware BLE ingest adapter to send chunks into the same backend ingestion interface.

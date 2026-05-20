@@ -1,6 +1,7 @@
 import os
 import logging
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 from uuid import uuid4
 
 import boto3
@@ -58,3 +59,33 @@ class AudioStorage:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
         return f'file://{os.path.abspath(target)}'
+
+    def load(self, storage_url: str) -> bytes:
+        parsed = urlparse(storage_url)
+
+        if parsed.scheme == 's3':
+            key = _sanitize_object_key(parsed.path.lstrip('/'))
+            if not parsed.netloc:
+                raise ValueError('Invalid S3 storage URL')
+            if not self._client:
+                raise ValueError('S3 storage client is not configured')
+            try:
+                response = self._client.get_object(Bucket=parsed.netloc, Key=key)
+                body = response['Body']
+                try:
+                    return body.read()
+                finally:
+                    body.close()
+            except (BotoCoreError, ClientError) as exc:
+                raise ValueError('Failed to read chunk from S3-compatible storage') from exc
+
+        if parsed.scheme == 'file':
+            storage_root = Path(settings.local_storage_path).resolve()
+            target = Path(unquote(parsed.path)).resolve()
+            try:
+                target.relative_to(storage_root)
+            except ValueError as exc:
+                raise ValueError('Invalid local storage path') from exc
+            return target.read_bytes()
+
+        raise ValueError(f'Unsupported storage URL scheme: {parsed.scheme or "missing"}')
