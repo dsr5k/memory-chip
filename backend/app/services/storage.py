@@ -88,4 +88,4 @@ class AudioStorage:
                 raise ValueError('Invalid local storage path') from exc
             return target.read_bytes()
 
-        raise ValueError('Unsupported storage URL')
+        raise ValueError(f'Unsupported storage URL scheme: {parsed.scheme or "missing"}')

@@ -4,7 +4,7 @@ from os.path import basename
 from typing import Protocol
 from urllib.parse import urlparse
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 from app.core.config import Settings, get_settings
 from app.models.entities import AudioChunk
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 storage = AudioStorage()
 
 
-@dataclass(slots=True)
+@dataclass
 class TranscriptionResult:
     text: str
     confidence: float | None
@@ -26,6 +26,10 @@ class TranscriptionProvider(Protocol):
     provider_name: str
 
     def transcribe(self, *, filename: str, content: bytes, content_type: str) -> TranscriptionResult: ...
+
+
+class TranscriptionError(Exception):
+    pass
 
 
 def _normalize_audio_content_type(content_type: str) -> str:
@@ -111,9 +115,24 @@ def get_transcription_provider(settings: Settings | None = None) -> Transcriptio
     return _build_transcription_provider(settings or get_settings())
 
 
+def _unwrap_transcription_error(error: Exception) -> Exception:
+    if isinstance(error, TranscriptionError) and error.__cause__ is not None:
+        cause = error.__cause__
+        if isinstance(cause, Exception):
+            return cause
+    return error
+
+
 def _sanitize_transcription_error(error: Exception) -> str:
+    error = _unwrap_transcription_error(error)
     if isinstance(error, NotImplementedError):
         return 'provider not implemented yet'
+    if isinstance(error, TimeoutError):
+        return 'transcription request timed out'
+    if isinstance(error, OSError):
+        return 'audio chunk could not be read'
+    if isinstance(error, OpenAIError):
+        return 'transcription service returned an error'
     if isinstance(error, ValueError):
         return 'provider is not configured correctly'
     return 'transcription request failed'
@@ -134,13 +153,16 @@ def build_transcription_error_result(chunk: AudioChunk, error: Exception) -> Tra
 
 
 def transcribe_chunk(chunk: AudioChunk) -> TranscriptionResult:
-    audio_bytes = storage.load(chunk.storage_url)
-    provider = get_transcription_provider()
-    return provider.transcribe(
-        filename=_guess_audio_filename(chunk),
-        content=audio_bytes,
-        content_type=_guess_audio_content_type(chunk),
-    )
+    try:
+        audio_bytes = storage.load(chunk.storage_url)
+        provider = get_transcription_provider()
+        return provider.transcribe(
+            filename=_guess_audio_filename(chunk),
+            content=audio_bytes,
+            content_type=_guess_audio_content_type(chunk),
+        )
+    except (NotImplementedError, OSError, OpenAIError, TimeoutError, ValueError) as exc:
+        raise TranscriptionError('Chunk transcription failed') from exc
 
 
 def semantic_filter_stub(text: str) -> str:

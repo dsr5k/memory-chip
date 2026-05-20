@@ -1,9 +1,9 @@
-from openai import OpenAIError
 from sqlalchemy import delete
 
 from app.db.session import SessionLocal
 from app.models.entities import AudioChunk, Embedding, Flashcard, Note, Summary, Transcript
 from app.services.pipeline import (
+    TranscriptionError,
     build_transcription_error_result,
     generate_flashcard_stub,
     generate_summary_stub,
@@ -26,7 +26,7 @@ def process_chunk(chunk_id: str):
 
         try:
             transcription = transcribe_chunk(chunk)
-        except (NotImplementedError, OSError, OpenAIError, TimeoutError, ValueError) as exc:
+        except TranscriptionError as exc:
             transcription = build_transcription_error_result(chunk, exc)
 
         filtered_text = semantic_filter_stub(transcription.text)
