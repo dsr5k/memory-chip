@@ -3,11 +3,12 @@ from sqlalchemy import delete
 from app.db.session import SessionLocal
 from app.models.entities import AudioChunk, Embedding, Flashcard, Note, Summary, Transcript
 from app.services.pipeline import (
+    build_transcription_error_result,
     generate_flashcard_stub,
     generate_summary_stub,
     relevance_score_stub,
     semantic_filter_stub,
-    transcribe_chunk_stub,
+    transcribe_chunk,
 )
 from app.tasks.celery_app import celery_app
 
@@ -20,11 +21,20 @@ def process_chunk(chunk_id: str):
         if not chunk:
             return {'status': 'missing_chunk', 'chunk_id': chunk_id}
 
-        transcript_text, confidence = transcribe_chunk_stub(chunk)
-        filtered_text = semantic_filter_stub(transcript_text)
-        score = relevance_score_stub(filtered_text)
+        try:
+            transcription = transcribe_chunk(chunk)
+        except Exception as exc:
+            transcription = build_transcription_error_result(chunk, exc)
 
-        transcript = Transcript(session_id=chunk.session_id, chunk_id=chunk.id, text=filtered_text, confidence=confidence)
+        filtered_text = semantic_filter_stub(transcription.text)
+        score = 0.0 if transcription.is_error else relevance_score_stub(filtered_text)
+
+        transcript = Transcript(
+            session_id=chunk.session_id,
+            chunk_id=chunk.id,
+            text=filtered_text,
+            confidence=transcription.confidence,
+        )
         note = Note(session_id=chunk.session_id, text=filtered_text, score=score, tags='education')
 
         db.execute(delete(Summary).where(Summary.session_id == chunk.session_id))

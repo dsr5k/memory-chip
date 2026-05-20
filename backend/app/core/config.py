@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     qdrant_collection: str = 'memory_segments'
 
     llm_provider: str = 'stub'
-    whisper_provider: str = 'stub'
+    whisper_provider: str = 'openai_whisper'
+    openai_api_key: str | None = None
+    openai_whisper_model: str = 'whisper-1'
+    openai_base_url: str | None = None
 
     celery_task_always_eager: bool = False
     process_inline_fallback: bool = True
