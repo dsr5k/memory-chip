@@ -143,7 +143,6 @@ export default function HomePage() {
 
         setChunkCount((count) => count + 1);
         setLastResponse(JSON.stringify(ingestPayload, null, 2));
-        void refreshLiveOutputs(sid);
         chunkIndexRef.current += 1;
       };
 
