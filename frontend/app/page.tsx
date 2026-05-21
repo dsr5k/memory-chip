@@ -1,9 +1,30 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 const CHUNK_MS = 5000;
+const LIVE_POLL_MS = 3000;
+const LIVE_POLL_INTERVAL_SECONDS = LIVE_POLL_MS / 1000;
+
+type LiveNote = {
+  id: string;
+  text: string;
+  score: number;
+  tags: string | null;
+};
+
+function getApiErrorMessage(payload: unknown, fallback: string): string {
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'detail' in payload &&
+    typeof (payload as { detail: unknown }).detail === 'string'
+  ) {
+    return (payload as { detail: string }).detail;
+  }
+  return fallback;
+}
 
 export default function HomePage() {
   const [userId, setUserId] = useState('00000000-0000-0000-0000-000000000001');
@@ -11,12 +32,68 @@ export default function HomePage() {
   const [status, setStatus] = useState('Idle');
   const [chunkCount, setChunkCount] = useState(0);
   const [lastResponse, setLastResponse] = useState<string>('');
+  const [liveNotes, setLiveNotes] = useState<LiveNote[]>([]);
+  const [liveSummary, setLiveSummary] = useState('');
+  const [isLiveRefreshing, setIsLiveRefreshing] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [lastLiveUpdateAt, setLastLiveUpdateAt] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunkIndexRef = useRef(0);
+  const liveRefreshInFlightRef = useRef(false);
 
   const isRecording = useMemo(() => mediaRecorderRef.current?.state === 'recording', [status]);
+
+  const refreshLiveOutputs = useCallback(async (sid: string) => {
+    if (liveRefreshInFlightRef.current) {
+      return;
+    }
+
+    liveRefreshInFlightRef.current = true;
+    setIsLiveRefreshing(true);
+    setLiveError(null);
+
+    try {
+      const [notesResponse, summaryResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/sessions/${sid}/notes`),
+        fetch(`${API_BASE_URL}/api/sessions/${sid}/summary`),
+      ]);
+
+      const [notesPayload, summaryPayload] = await Promise.all([notesResponse.json(), summaryResponse.json()]);
+
+      if (!notesResponse.ok) {
+        throw new Error(getApiErrorMessage(notesPayload, 'Unable to fetch notes right now.'));
+      }
+
+      if (!summaryResponse.ok) {
+        throw new Error(getApiErrorMessage(summaryPayload, 'Unable to fetch summary right now.'));
+      }
+
+      setLiveNotes(Array.isArray(notesPayload) ? notesPayload : []);
+      setLiveSummary(typeof summaryPayload?.summary === 'string' ? summaryPayload.summary : '');
+      setLastLiveUpdateAt(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Live update refresh failed', error);
+      setLiveError(`Live updates are temporarily unavailable. Retrying in ${LIVE_POLL_INTERVAL_SECONDS} seconds.`);
+    } finally {
+      setIsLiveRefreshing(false);
+      liveRefreshInFlightRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    void refreshLiveOutputs(sessionId);
+    const intervalId = window.setInterval(() => {
+      void refreshLiveOutputs(sessionId);
+    }, LIVE_POLL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [refreshLiveOutputs, sessionId]);
 
   async function createSession(): Promise<string> {
     const response = await fetch(`${API_BASE_URL}/api/sessions/create`, {
@@ -36,6 +113,12 @@ export default function HomePage() {
   async function startCapture() {
     try {
       setStatus('Requesting microphone permission...');
+      setChunkCount(0);
+      setLastResponse('');
+      setLiveNotes([]);
+      setLiveSummary('');
+      setLiveError(null);
+      setLastLiveUpdateAt(null);
       const sid = await createSession();
       setSessionId(sid);
 
@@ -131,6 +214,43 @@ export default function HomePage() {
       <section className="card">
         <h2>Last Ingestion Response</h2>
         <pre>{lastResponse || 'No chunks uploaded yet.'}</pre>
+      </section>
+
+      <section className="card">
+        <h2>Live Notes</h2>
+        <p>
+          {sessionId
+            ? isLiveRefreshing
+              ? 'Checking for new notes...'
+              : `Polling every ${LIVE_POLL_INTERVAL_SECONDS}s for updates.`
+            : 'Start a session to see live notes.'}
+        </p>
+        {lastLiveUpdateAt && <p>Last refreshed at: {lastLiveUpdateAt}</p>}
+        {liveError && <p>Status: {liveError}</p>}
+        {liveNotes.length > 0 ? (
+          <ul>
+            {liveNotes.map((note) => (
+              <li key={note.id}>
+                {note.text}
+                {note.tags ? ` (${note.tags})` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No notes generated yet.</p>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Live Summary</h2>
+        <p>
+          {sessionId
+            ? isLiveRefreshing
+              ? 'Refreshing summary...'
+              : 'Summary updates automatically as chunks are processed.'
+            : 'Start a session to see live summary.'}
+        </p>
+        <pre>{liveSummary || 'No summary generated yet.'}</pre>
       </section>
     </main>
   );
