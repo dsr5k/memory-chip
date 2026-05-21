@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 const CHUNK_MS = 5000;
 const LIVE_POLL_MS = 3000;
+const LIVE_POLL_SECONDS = LIVE_POLL_MS / 1000;
 
 type LiveNote = {
   id: string;
@@ -209,7 +210,7 @@ export default function HomePage() {
           {sessionId
             ? isLiveRefreshing
               ? 'Checking for new notes...'
-              : `Polling every ${LIVE_POLL_MS / 1000}s for updates.`
+              : `Polling every ${LIVE_POLL_SECONDS}s for updates.`
             : 'Start a session to see live notes.'}
         </p>
         {lastLiveUpdateAt && <p>Last refreshed at: {lastLiveUpdateAt}</p>}
