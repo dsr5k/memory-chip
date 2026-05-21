@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 const CHUNK_MS = 5000;
 const LIVE_POLL_MS = 3000;
-const LIVE_POLL_SECONDS = LIVE_POLL_MS / 1000;
+const LIVE_POLL_INTERVAL_SECONDS = LIVE_POLL_MS / 1000;
 
 type LiveNote = {
   id: string;
@@ -75,7 +75,7 @@ export default function HomePage() {
       setLastLiveUpdateAt(new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Live update refresh failed', error);
-      setLiveError('Live updates are temporarily unavailable. Retrying automatically.');
+      setLiveError(`Live updates are temporarily unavailable. Retrying in ${LIVE_POLL_INTERVAL_SECONDS} seconds.`);
     } finally {
       setIsLiveRefreshing(false);
       liveRefreshInFlightRef.current = false;
@@ -222,7 +222,7 @@ export default function HomePage() {
           {sessionId
             ? isLiveRefreshing
               ? 'Checking for new notes...'
-              : `Polling every ${LIVE_POLL_SECONDS}s for updates.`
+              : `Polling every ${LIVE_POLL_INTERVAL_SECONDS}s for updates.`
             : 'Start a session to see live notes.'}
         </p>
         {lastLiveUpdateAt && <p>Last refreshed at: {lastLiveUpdateAt}</p>}
