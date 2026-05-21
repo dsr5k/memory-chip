@@ -14,6 +14,18 @@ type LiveNote = {
   tags: string | null;
 };
 
+function getApiErrorMessage(payload: unknown, fallback: string): string {
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'detail' in payload &&
+    typeof (payload as { detail: unknown }).detail === 'string'
+  ) {
+    return (payload as { detail: string }).detail;
+  }
+  return fallback;
+}
+
 export default function HomePage() {
   const [userId, setUserId] = useState('00000000-0000-0000-0000-000000000001');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -51,19 +63,19 @@ export default function HomePage() {
       const [notesPayload, summaryPayload] = await Promise.all([notesResponse.json(), summaryResponse.json()]);
 
       if (!notesResponse.ok) {
-        throw new Error(`Failed to fetch notes: ${JSON.stringify(notesPayload)}`);
+        throw new Error(getApiErrorMessage(notesPayload, 'Unable to fetch notes right now.'));
       }
 
       if (!summaryResponse.ok) {
-        throw new Error(`Failed to fetch summary: ${JSON.stringify(summaryPayload)}`);
+        throw new Error(getApiErrorMessage(summaryPayload, 'Unable to fetch summary right now.'));
       }
 
       setLiveNotes(Array.isArray(notesPayload) ? notesPayload : []);
       setLiveSummary(typeof summaryPayload?.summary === 'string' ? summaryPayload.summary : '');
       setLastLiveUpdateAt(new Date().toLocaleTimeString());
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setLiveError(message);
+      console.error('Live update refresh failed', error);
+      setLiveError('Live updates are temporarily unavailable. Retrying automatically.');
     } finally {
       setIsLiveRefreshing(false);
       liveRefreshInFlightRef.current = false;
@@ -214,7 +226,7 @@ export default function HomePage() {
             : 'Start a session to see live notes.'}
         </p>
         {lastLiveUpdateAt && <p>Last refreshed at: {lastLiveUpdateAt}</p>}
-        {liveError && <p>Status: Live updates unavailable ({liveError})</p>}
+        {liveError && <p>Status: {liveError}</p>}
         {liveNotes.length > 0 ? (
           <ul>
             {liveNotes.map((note) => (
