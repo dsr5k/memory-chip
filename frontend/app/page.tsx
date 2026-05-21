@@ -231,7 +231,13 @@ export default function HomePage() {
 
       <section className="card">
         <h2>Live Summary</h2>
-        <p>{isLiveRefreshing && sessionId ? 'Refreshing summary...' : 'Summary updates automatically as chunks are processed.'}</p>
+        <p>
+          {sessionId
+            ? isLiveRefreshing
+              ? 'Refreshing summary...'
+              : 'Summary updates automatically as chunks are processed.'
+            : 'Start a session to see live summary.'}
+        </p>
         <pre>{liveSummary || 'No summary generated yet.'}</pre>
       </section>
     </main>
