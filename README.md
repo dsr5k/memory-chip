@@ -22,6 +22,7 @@ This backend is intentionally structured so ingestion can later accept BLE/hardw
 ## Core MVP features implemented
 
 - Automatic mic capture from web phone browser (no manual upload flow)
+- Live-updating Notes and Summary panels in the web UI (polling-based, no manual reload)
 - Session lifecycle APIs: create / end / status
 - Chunk ingestion endpoint with object storage persistence
 - Async pipeline with configurable transcription provider support:
@@ -85,6 +86,8 @@ npm run dev
 ```
 
 Open `http://localhost:3000` on your phone browser (same network) or desktop browser.
+
+While a capture session is active, the frontend automatically polls backend session endpoints to refresh **Live Notes** and **Live Summary** as each chunk is processed.
 
 ## UI preview
 
